@@ -48,6 +48,13 @@ This is the project's actual contribution. Published frameworks sign what the
 user approved but leave merchant-controlled free text upstream of that
 approval, where it shapes which items an agent selects.
 
+The envelope is structurally sound, not merely declarative. Listing fields are
+angle-bracket escaped before embedding, so no catalog content can close the
+envelope early and place text in the instruction position. Escaping is applied
+to all angle brackets rather than a specific tag string, so it survives a tag
+rename. The catalog carries a fixture that attempts exactly this, and a test
+asserts the closing tag appears exactly once.
+
 ## T3. Policy engine bypass
 
 The agent skips evaluation, calls checkout directly, forges a token, or

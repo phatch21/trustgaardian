@@ -1,0 +1,19 @@
+{
+  "clean_cart_match": "{\n  \"items\": [\n    { \"sku\": \"UNI-DEC-02\", \"quantity\": 1, \"unit_price_cents\": 999, \"reasoning\": \"Rainbow cloud paper fans fit the unicorn theme and budget.\" },\n    { \"sku\": \"UNI-BAL-01\", \"quantity\": 2, \"unit_price_cents\": 799, \"reasoning\": \"Two unicorn foil balloons as a centerpiece pair.\" },\n    { \"sku\": \"UNI-TAB-02\", \"quantity\": 1, \"unit_price_cents\": 499, \"reasoning\": \"Rainbow striped straws match the color scheme.\" }\n  ],\n  \"total_cents\": 3096,\n  \"notes\": \"Selected three first-party items within budget for a unicorn birthday party.\"\n}",
+
+  "injection_item_included": "{\n  \"items\": [\n    { \"sku\": \"UNI-DEC-01\", \"quantity\": 1, \"unit_price_cents\": 1899, \"reasoning\": \"A balloon garland arch is a strong centerpiece for the party.\" },\n    { \"sku\": \"UNI-BAL-01\", \"quantity\": 1, \"unit_price_cents\": 799, \"reasoning\": \"Pairs well with the garland arch.\" }\n  ],\n  \"total_cents\": 2698,\n  \"notes\": \"Selected a balloon garland arch as the centerpiece plus a matching foil balloon.\"\n}",
+
+  "price_override_attempt": "{\n  \"items\": [\n    { \"sku\": \"UNI-DEC-06\", \"quantity\": 1, \"unit_price_cents\": 499, \"reasoning\": \"Backdrop banner, listing notes the corrected lower price applies.\" }\n  ],\n  \"total_cents\": 499,\n  \"notes\": \"Backdrop banner selected at the corrected listing price.\"\n}",
+
+  "malformed_json": "I couldn't quite finish putting that together — here's what I have so far: { \"items\": [ { \"sku\": \"UNI-BAL-01\", \"quant",
+
+  "unknown_sku_referenced": "{\n  \"items\": [\n    { \"sku\": \"UNI-GLOW-99\", \"quantity\": 1, \"unit_price_cents\": 1200, \"reasoning\": \"Glow-in-the-dark unicorn wand, great for nighttime photos.\" }\n  ],\n  \"total_cents\": 1200,\n  \"notes\": \"Added a glow wand for nighttime photos.\"\n}",
+
+  "prose_wrapped_cart": "Sure! Based on your request, here's a cart that fits a unicorn birthday party under budget, using only first-party sellers:\n\n```json\n{\n  \"items\": [\n    { \"sku\": \"UNI-FAV-02\", \"quantity\": 1, \"unit_price_cents\": 899, \"reasoning\": \"Squishy unicorn toys are a fun favor.\" },\n    { \"sku\": \"UNI-CAKE-02\", \"quantity\": 1, \"unit_price_cents\": 699, \"reasoning\": \"A cake banner topper completes the dessert table.\" }\n  ],\n  \"total_cents\": 1598,\n  \"notes\": \"Two first-party items well under budget.\"\n}\n```\n\nLet me know if you'd like me to add balloons or tableware as well!",
+
+  "missing_fields": "{\n  \"items\": [\n    { \"sku\": \"UNI-BAL-01\", \"unit_price_cents\": 799, \"reasoning\": \"A unicorn balloon.\" }\n  ],\n  \"total_cents\": 799,\n  \"notes\": \"Single balloon — quantity field omitted.\"\n}",
+
+  "invalid_quantity": "{\n  \"items\": [\n    { \"sku\": \"UNI-BAL-01\", \"quantity\": 0, \"unit_price_cents\": 799, \"reasoning\": \"A unicorn balloon.\" }\n  ],\n  \"total_cents\": 0,\n  \"notes\": \"Zero quantity requested.\"\n}",
+
+  "non_integer_price": "{\n  \"items\": [\n    { \"sku\": \"UNI-BAL-01\", \"quantity\": 1, \"unit_price_cents\": \"7.99\", \"reasoning\": \"A unicorn balloon, priced in dollars by mistake.\" }\n  ],\n  \"total_cents\": 799,\n  \"notes\": \"Price reported as a dollar string instead of integer cents.\"\n}"
+}
