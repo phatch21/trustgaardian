@@ -9,12 +9,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed": "tsx db/seed.ts",
-    "verify-chain": "tsx scripts/verify-chain.ts"
+    "verify-chain": "tsx scripts/verify-chain.ts",
+    "spike:injection": "tsx scripts/spike-injection.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1138.0",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",

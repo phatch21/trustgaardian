@@ -58,3 +58,36 @@ failure classes and their detection order into docs/spec.md.
 **Suggestion:** Specify failure taxonomies before writing tests against them.
 An error union with an unreachable variant is a design smell that a test plan
 written from prose will not catch.
+
+## 2026-09-23 — Compiled output silently drops the catalog fixture
+
+**Task attempted:** Implement /catalog, loading fixtures from
+catalog/fixtures/catalog.json via a path resolved relative to
+import.meta.url.
+
+**Steps taken:** Ran `npm run build`, then checked dist/catalog/fixtures/
+for the compiled fixture path's counterpart.
+
+**Expected:** Either the JSON file is copied alongside the compiled JS, or
+the build fails loudly if it can't resolve the fixture.
+
+**Actual:** `tsc` compiles only .ts files. dist/ has no fixtures/
+directory at all. The build reports success. loadCatalog() run from
+dist/catalog/load.js would throw ENOENT at runtime — a working build that
+produces a broken artifact.
+
+**Severity:** Not currently blocking — every real script (npm test,
+seed, verify-chain) runs against source via vitest/tsx, and nothing
+consumes dist/ yet. It becomes blocking the instant something does: a
+"start" script that runs compiled output, or /web's dev server, whichever
+lands first, is the piece that will hit it — and whoever's building /web
+will hit it first if /web imports catalog through the same compiled path.
+
+**Workaround:** None applied; deferred deliberately rather than expanding
+this task's scope into build tooling.
+
+**Suggestion:** Before /web or any "run from dist" path exists, add a
+build step (postbuild script, or bundler asset handling) that copies
+non-.ts assets into dist/ alongside the files that reference them, or
+switch loadCatalog() to read via a project-root-relative path instead of
+one relative to its own compiled location.
