@@ -3,14 +3,14 @@
 Six objects. A Grant is a standing authorization; a Request is one shopping
 task under it; a Decision authorizes exactly one Cart.
 
-| Object | Purpose | Key fields |
-| --- | --- | --- |
-| Grant | Standing authorization from user to one agent | id, user_id, agent_id, expires_at, status, constraints, escalation |
-| Request | One shopping task under a grant | id, grant_id, raw_utterance, structured (goal, qualifiers, budget, deadline) |
-| Cart | What the agent proposes | id, request_id, items (sku, merchant, unit_price, qty, category), total |
-| Decision | Policy engine output | id, cart_id, verdict, rule_results, evaluated_at |
-| ExecutionToken | Signed authorization for one cart | grant_id, agent_id, request_hash, cart_hash, verdict, issued_at, expires_at, nonce, signature |
-| AuditEntry | Append-only record | seq, prev_hash, timestamp, actor, event_type, payload_hash |
+| Object         | Purpose                                       | Key fields                                                                                    |
+| -------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Grant          | Standing authorization from user to one agent | id, user_id, agent_id, expires_at, status, constraints, escalation                            |
+| Request        | One shopping task under a grant               | id, grant_id, raw_utterance, structured (goal, qualifiers, budget, deadline)                  |
+| Cart           | What the agent proposes                       | id, request_id, items (sku, merchant, unit_price, qty, category), total                       |
+| Decision       | Policy engine output                          | id, cart_id, verdict, rule_results, evaluated_at                                              |
+| ExecutionToken | Signed authorization for one cart             | grant_id, agent_id, request_hash, cart_hash, verdict, issued_at, expires_at, nonce, signature |
+| AuditEntry     | Append-only record                            | seq, prev_hash, timestamp, actor, event_type, payload_hash                                    |
 
 ## Grant constraints
 
@@ -65,11 +65,38 @@ because it is correct, not because it is new.
 entry_hash = SHA-256(prev_hash || timestamp || actor || event_type || payload_hash)
 ```
 
-Genesis entry uses a zero prev_hash. A verifier command walks the chain and
-reports the first break.
+Fields are length-prefixed before concatenation, as in tokens/canonicalize.ts,
+so attacker-influenced field content cannot shift boundaries to produce a
+collision. Genesis entry uses a zero prev_hash (64 zeros).
+
+Appends read the current tail and insert inside a single transaction. A naive
+read-then-insert lets two concurrent appends claim the same predecessor,
+silently forking the chain and making the verifier's report meaningless.
 
 Events logged: grant created, request received, cart proposed, decision
 rendered, token issued, checkout attempted, checkout result.
+
+### Verifier semantics
+
+`verifyChain` walks from genesis and reports the first break. Three failure
+classes, each detected at a distinct point:
+
+| Reason          | Condition                                                                                    | What it means                                                  |
+| --------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `hash_mismatch` | A row's stored entry_hash does not match a recomputation over its own five fields            | Any field of that row was altered, including entry_hash itself |
+| `broken_link`   | A row is internally consistent but its prev_hash does not match the predecessor's entry_hash | The link was forged with entry_hash recomputed to match        |
+| `seq_gap`       | seq numbering skips a value                                                                  | A row was deleted                                              |
+
+These are not interchangeable, and a single tampering action does not map
+freely onto them. Editing entry*hash alone always yields `hash_mismatch`, never
+`broken_link`: entry_hash is defined over the row's own fields, so the
+self-consistency check fails at that row's seq, before verification reaches
+the next row where a link check could run. Reaching `broken_link` requires
+forging prev_hash \_and* recomputing entry_hash to stay internally consistent
+with the forgery.
+
+Detection order is hash_mismatch, then broken_link, then seq_gap, and the
+earlier seq always wins. A chain with multiple breaks reports only the first.
 
 ## Escalation UX
 
