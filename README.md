@@ -22,6 +22,12 @@ injection that fools the agent still cannot raise a spend cap or add a
 merchant. Approval produces a signed ExecutionToken bound to one exact cart
 and one agent id.
 
+Every step is recorded in a hash-chained, append-only log: grant created,
+request received, cart proposed, decision rendered, token issued, checkout
+attempted, checkout result. A verifier walks the chain and reports the first
+break, distinguishing an altered row from a forged link from a deleted one.
+Tampering is detectable rather than merely discouraged.
+
 ## Threats defended
 
 1. Cart substitution after approval, via cart-hash binding
@@ -31,7 +37,9 @@ and one agent id.
 
 Out of scope and undefended: budget splitting across transactions, signing
 key compromise, merchant-side fraud, agent-merchant collusion, denial of
-service, user coercion. See docs/threat-model.md.
+service, user coercion. Audit logging has one named limit: under database
+lock contention an attempt may leave no entry, because the log itself is
+momentarily unwritable. See docs/threat-model.md.
 
 ## Prior art
 

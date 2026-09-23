@@ -70,6 +70,12 @@ presentation, verifyToken compares the signed agent_id against the
 authenticated caller. The signature makes the binding unforgeable; the
 presentation check makes a stolen token useless to a second agent.
 
+Audit durability has one limit. If lock contention prevents the first append,
+an attempt leaves no entry at all, because the write mechanism itself is
+unavailable. Closing this requires a separate audit connection with retry or
+an in-memory buffer that flushes when the lock clears. Out of scope here, and
+named rather than papered over.
+
 ## Named but out of scope
 
 - Budget evasion by splitting one purchase across many small transactions.
