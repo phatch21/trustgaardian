@@ -64,6 +64,12 @@ user's signing key rather than the agent's, leaving a compromised agent able
 to elicit a valid user signature. Binding to agent identity closes that path
 and makes a stolen token useless to a second agent.
 
+Agent binding is enforced twice. At issuance, rule 1 requires the grant's
+agent_id to match the calling agent before a decision can be allow. At
+presentation, verifyToken compares the signed agent_id against the
+authenticated caller. The signature makes the binding unforgeable; the
+presentation check makes a stolen token useless to a second agent.
+
 ## Named but out of scope
 
 - Budget evasion by splitting one purchase across many small transactions.
