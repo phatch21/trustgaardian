@@ -29,7 +29,8 @@
     "checkout",
     "catalog",
     "web",
-    "db"
+    "db",
+    "scripts"
   ],
   "exclude": ["node_modules", "dist"]
 }

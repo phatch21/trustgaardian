@@ -98,6 +98,14 @@ with the forgery.
 Detection order is hash_mismatch, then broken_link, then seq_gap, and the
 earlier seq always wins. A chain with multiple breaks reports only the first.
 
+`npm run verify-chain` (scripts/verify-chain.ts) is a standalone CLI over
+this function: it opens the database, calls `verifyChain`, and prints a
+human-readable report — entry count and head hash on success, or the seq,
+reason code, and a one-line explanation of that reason on failure. Exit
+code 0 or 1, so it also works as a CI check. It lives outside /audit
+on purpose, same reasoning as everywhere else in this codebase: /audit's
+job is append and verify, not argv parsing or process.exit.
+
 ## Escalation UX
 
 When a cart escalates, the user sees the cart, the rule that triggered, the

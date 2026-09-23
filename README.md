@@ -60,13 +60,27 @@ or endorsed by any organization named above.
 
 ```
 npm install
-npm run seed      # creates the SQLite database and loads catalog fixtures
+npm run seed          # creates the SQLite database and runs migrations
 npm test
-npm run dev       # http://localhost:3000
+npm run verify-chain  # independently walks the audit log's hash chain
 ```
 
-Requires Node 20+. Set `AWS_REGION` and credentials for the Bedrock call, or
-run `npm run dev -- --offline` to use recorded agent responses.
+Requires Node 20+. Every command above is real and passes on a fresh clone.
+
+### Not yet wired
+
+- **`npm run dev` and the web UI (`/web`).** No dev server exists yet;
+  `/web` is a placeholder. There is nothing to open in a browser.
+- **The Bedrock agent call (`/agent`).** No model call is wired up, online
+  or offline — there is no `--offline` recorded-response mode either.
+- **Catalog fixtures (`/catalog`).** `npm run seed` creates the database
+  and runs the schema migration only; there are no fixture listings
+  (including the planted injection payloads) to load yet.
+
+Because of the point above, a freshly seeded database's audit log is empty
+— `npm run verify-chain` will correctly report 0 entries verified. Right
+now the only thing that exercises `/engine`, `/tokens`, `/audit`, and
+`/checkout` end to end is the test suite (`npm test`).
 
 ## License
 
