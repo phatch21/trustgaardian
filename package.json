@@ -1,0 +1,26 @@
+{
+  "name": "trustgaardian",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic constraint enforcement for an AI shopping agent.",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "seed": "tsx db/seed.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
