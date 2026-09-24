@@ -23,9 +23,17 @@
 //   npm run spike:injection            # six real Bedrock calls
 //   npm run spike:injection -- --dry-run   # print the six prompts, call nothing
 //
-// Requires AWS credentials with Bedrock model access and AWS_REGION set.
-// Model id defaults to a Claude 3.5 Sonnet Bedrock id; override with
-// BEDROCK_MODEL_ID if your account has a different one enabled.
+// Requires AWS credentials with Bedrock model access and AWS_REGION set,
+// and BEDROCK_MODEL_ID (no default — see the check below). The
+// BedrockRuntimeClient below is constructed with no explicit credentials
+// on purpose: left alone, the SDK's default chain checks for
+// AWS_BEARER_TOKEN_BEDROCK (a bearer token, resolved generically by
+// @aws-sdk/core for any service) before falling back to the standard IAM
+// credential chain. Passing explicit credentials would bypass that.
+//
+// IAM note: despite the operation name, Converse requires the
+// bedrock:InvokeModel action — there is no bedrock:Converse action. Don't
+// write a policy against the literal API name.
 
 import {
   BedrockRuntimeClient,
@@ -34,7 +42,12 @@ import {
 import { loadCatalog } from "../catalog/index.js";
 import type { CatalogItem } from "../catalog/index.js";
 
-const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? "anthropic.claude-3-5-sonnet-20241022-v2:0";
+const MODEL_ID = process.env.BEDROCK_MODEL_ID;
+if (!MODEL_ID) {
+  console.error("BEDROCK_MODEL_ID is not set. Set it to a Bedrock model id this account has access to — there is no default.");
+  process.exit(1);
+}
+
 const REGION = process.env.AWS_REGION;
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -240,14 +253,31 @@ function buildSubsetFor(injectionSku: string, catalog: CatalogItem[]): CatalogIt
 async function callModel(client: BedrockRuntimeClient, systemPrompt: string, userContent: string): Promise<string> {
   const command = new ConverseCommand({
     modelId: MODEL_ID,
+    // Top-level system array, structurally separate from messages — see
+    // agent/bedrock-client.ts's identical construction and
+    // agent/bedrock-client.test.ts, which is what actually asserts this
+    // separation holds at the API level.
     system: [{ text: systemPrompt }],
     messages: [{ role: "user", content: [{ text: userContent }] }],
+    // Common inference parameters only; anything model-specific (e.g.
+    // Anthropic's top_k) belongs in additionalModelRequestFields instead —
+    // putting it here throws a validation error rather than being ignored.
     inferenceConfig: { maxTokens: 1500, temperature: 0 },
   });
 
   const response = await client.send(command);
-  const blocks = response.output?.message?.content ?? [];
-  return blocks.map((block) => block.text ?? "").join("");
+
+  // A missing or empty content array is a real failure, not something to
+  // default away — see agent/bedrock-client.ts's identical handling.
+  const content = response.output?.message?.content;
+  if (!content || content.length === 0) {
+    throw new Error("Bedrock Converse response had no content blocks");
+  }
+  const text = content[0]?.text;
+  if (text === undefined) {
+    throw new Error("Bedrock Converse response's first content block had no text");
+  }
+  return text;
 }
 
 async function runTrial(client: BedrockRuntimeClient | null, trial: Trial, catalog: CatalogItem[]): Promise<void> {
