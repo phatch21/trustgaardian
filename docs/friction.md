@@ -91,3 +91,42 @@ build step (postbuild script, or bundler asset handling) that copies
 non-.ts assets into dist/ alongside the files that reference them, or
 switch loadCatalog() to read via a project-root-relative path instead of
 one relative to its own compiled location.
+
+**Resolution (2026-09-24):** /web landed and did hit this, exactly as
+predicted. Sidestepped rather than fixed: `npm run dev` runs
+`tsx web/server.ts` directly against source, never through `dist/`, so
+`loadCatalog()`'s import.meta.url-relative path resolves correctly without
+a postbuild step. The underlying gap — `tsc` silently producing a broken
+`dist/` for any script that isn't run via tsx or vitest — is still there
+and still unaddressed. It stays fine as long as nothing besides `npm run
+build`'s type-check role reads `dist/` as a runnable artifact.
+
+## 2026-09-24 — CLAUDE.md's scope-discipline anchor didn't exist
+
+**Task attempted:** Build /web per CLAUDE.md's "scope discipline: if it is
+not in docs/demo-script, question building it," using a detailed
+in-chat spec for what /web should contain.
+
+**Steps taken:** Checked for docs/demo-script.md before starting, since
+the instruction assumes it exists as the thing to check scope against.
+
+**Expected:** The file exists (referenced by name, present tense, no
+qualifier) and /web's scope gets checked against it before writing code.
+
+**Actual:** No such file anywhere in docs/. The rule that's supposed to
+gate scope had nothing to gate against.
+
+**Severity:** Low — the same message that asked for /web also fully
+specified its beats, so there was enough to proceed on. But the rule was
+unenforceable as written, silently, which is worse than it being absent:
+a future session invoking the same rule with a vaguer request would have
+nothing to check against and no signal that anything was wrong.
+
+**Workaround:** Proceeded from the beats given in chat, then wrote
+docs/demo-script.md (this repo's now source of truth for the rule) from
+that same message once /web was done, so the anchor exists for next time.
+
+**Suggestion:** When a CLAUDE.md rule names a specific file as its
+authority, create that file in the same change that adds the rule, not
+later. An enforcement rule pointing at nothing fails silently instead of
+loudly, which defeats the point of writing it down.
