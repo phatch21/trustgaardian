@@ -28,6 +28,8 @@
     "agent",
     "checkout",
     "catalog",
+    "store",
+    "orchestrator",
     "web",
     "db",
     "scripts"
