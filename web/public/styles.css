@@ -27,7 +27,7 @@ body {
 }
 
 .app-header {
-  padding: 20px 28px 8px;
+  padding: 14px 28px 6px;
 }
 
 .app-header h1 {
@@ -44,7 +44,7 @@ body {
   display: grid;
   grid-template-columns: minmax(320px, 1.3fr) minmax(300px, 1fr);
   gap: 20px;
-  padding: 12px 28px 28px;
+  padding: 6px 28px 10px;
   /* stretch (the grid default): both columns match the taller one's
      height as the rule table grows, instead of each sizing to its own
      content and drifting out of balance. */
@@ -67,25 +67,53 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 480px;
+  /* Fixed relative to the viewport, not to content or to the right
+     column's height: 0 turns, 1 turn, and a 16-item cart all render at
+     the same pane height, with the log scrolling inside it. The 176px
+     offset is the header plus this element's own top/bottom page
+     margins, measured so the pane's bottom edge and the demo panel's
+     bottom edge land close together at 1080p. */
+  height: calc(100vh - 176px);
+  min-height: 420px;
+  max-height: 700px;
 }
 
 .conversation-log {
   flex: 1;
   /* Lets the log shrink below its content's intrinsic height inside the
      flex column, so overflow-y:auto actually scrolls instead of the
-     column growing past the pane. No max-height cap: capping it here
-     would leave whatever's left of the flex-grow space stranded below
-     the log instead of the log absorbing it. */
+     column growing past the pane. Flex items default to min-height:auto
+     (refuse to shrink below content size), which silently defeats
+     overflow-y:auto on a flex child unless this is set. */
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  /* Turns hug the bottom, next to the input, instead of the top with a
-     gap opening up beneath the last message as the pane stretches to
-     match a taller right column. */
-  justify-content: flex-end;
   gap: 14px;
+}
+
+/* Always the first child of #conversation (see index.html). Turns are
+   appended after it via appendChild, never before, so it always occupies
+   whatever space the turns don't need.
+
+   This replaces `justify-content: flex-end` on .conversation-log, which
+   looked like the right way to hug turns to the bottom when there's
+   little content, but breaks scrolling once content overflows: with
+   flex-end, overflow extends *above* the container's top edge, and most
+   browsers won't scroll a container into that negative-offset region at
+   all — scrollHeight reports it, but there's no way to reach it, which
+   is exactly the "reply clipped off the top, can't scroll up to it" bug.
+   A spacer with flex:1 (grow and shrink, zero basis) achieves the same
+   bottom-hugging look when content is short — it grows to absorb the
+   leftover space, pushing turns down — but collapses to zero first when
+   content overflows, since an empty div's min-height is 0 while a turn's
+   content-based min-height isn't. Once it's collapsed, the log is back to
+   plain top-to-bottom flex-start overflow, which scrolls normally in both
+   directions. app.js's scrollTop = scrollHeight after each turn is what
+   keeps the newest turn in view; this spacer only handles the case where
+   nothing overflows yet. */
+.log-spacer {
+  flex: 1 1 0%;
 }
 
 .turn {
@@ -232,7 +260,7 @@ body {
 .side-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
 .policy-panel,
@@ -240,21 +268,21 @@ body {
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px;
 }
 
 .policy-panel h2,
 .demo-panel h2 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 1.05rem;
 }
 
 .constraints-list {
-  margin: 0 0 18px;
+  margin: 0 0 12px;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 10px;
-  font-size: 0.88rem;
+  gap: 3px 10px;
+  font-size: 0.86rem;
 }
 
 .constraints-list dt {
@@ -279,7 +307,7 @@ body {
 .rule-table th,
 .rule-table td {
   text-align: left;
-  padding: 5px 6px;
+  padding: 3px 6px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -289,7 +317,7 @@ body {
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .verdict-badge.allow {
@@ -320,13 +348,13 @@ body {
 }
 
 .demo-warning {
-  margin: 0 0 14px;
-  font-size: 0.85rem;
+  margin: 0 0 10px;
+  font-size: 0.82rem;
   color: var(--demo-border);
 }
 
 .demo-control {
-  padding: 10px 0;
+  padding: 7px 0;
   border-top: 1px solid rgba(179, 38, 30, 0.2);
 }
 
@@ -336,13 +364,13 @@ body {
 }
 
 .demo-control h3 {
-  margin: 0 0 4px;
-  font-size: 0.92rem;
+  margin: 0 0 3px;
+  font-size: 0.9rem;
 }
 
 .demo-control p {
-  margin: 0 0 8px;
-  font-size: 0.82rem;
+  margin: 0 0 6px;
+  font-size: 0.8rem;
   color: var(--muted);
 }
 

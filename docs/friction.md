@@ -345,6 +345,53 @@ that forces an exception mid-flow, not just the test that forces a normal
 rejection. Transaction boundaries and exception boundaries are not the
 same boundary.
 
+### 2026-09-24 — maxTokens too low for a real cart response, truncation indistinguishable from a bad model
+
+**Task attempted:** Run /web against live Bedrock with broad shopping
+requests ("get the full bundle," "get everything for the party").
+
+**Steps taken:** Sent a request that would select a larger number of
+catalog items and let the model reason over each in agent/prompt.ts's
+required output shape (one "reasoning" string per item).
+
+**Expected:** A proposed cart, the same as smaller requests produced.
+
+**Actual:** invalid_json — but only on the larger requests; the same flow
+against a small cart succeeded. Nothing threw and nothing was logged:
+Bedrock returned a normal HTTP 200, so there was no exception for
+anything to catch (see the AccessDeniedException/ThrottlingException
+entries above — this looks like neither of those, and isn't). The
+response was simply cut off mid-JSON by inferenceConfig.maxTokens (1500),
+reached before the model finished a cart with a reasoning string per item
+across enough SKUs. agent/parse.ts's parseCartResponse has no way to tell
+a truncated response apart from the model just producing bad output on
+its own — both fail identically as invalid_json. stopReason (Bedrock's
+own signal for exactly this — "max_tokens" vs "end_turn" vs
+"content_filtered"/"guardrail_intervened") existed on every response the
+whole time and simply wasn't being read.
+
+**Severity:** Medium. Not a security issue — /engine's enforcement never
+depended on this — but it silently degrades the live demo specifically on
+the larger, more interesting requests, the ones most worth showing.
+
+**Workaround:** Raised maxTokens from 1500 to 4096 in
+agent/bedrock-client.ts. Added logging that reads stopReason and logs it
+(with response length and a head/tail text preview) specifically on the
+path where response text exists but fails JSON.parse, so a future
+recurrence — a still-larger cart, a more verbose model — reads as
+max_tokens in the console instead of another unexplained invalid_json.
+
+**Suggestion:** When a fixed token budget feeds a structured-output
+contract with a per-item field (reasoning, notes, anything that scales
+with cart size), size the budget from the contract's worst case, not a
+round number chosen before the shape existed. More generally: an SDK or
+its docs should make truncation visible at the point a parse failure is
+reported, not just in a separate response field the caller has to
+already know to check — the default failure presentation (valid HTTP
+response, unparseable body) points investigation at the model's output
+quality, not at the request's own configuration, which is backwards for
+how often the latter is the actual cause.
+
 ### 2026-09-23 — request_hash left undefined in docs/spec.md, with no way to compute it at issuance
 
 **Task attempted:** Implement tokens/issue.ts's issueToken(), which
