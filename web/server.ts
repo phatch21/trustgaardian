@@ -71,23 +71,38 @@ async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknow
   return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
 }
 
-function assertSeeded(db: Database.Database): void {
+// Opens the database and confirms it's actually usable — not just that
+// openDb() didn't throw, but that migrations ran and the demo grant is
+// there. better-sqlite3 throws synchronously if DB_PATH's directory
+// doesn't exist at all (a fresh clone that hasn't been seeded yet), so
+// that has to be caught here too, not just the later getGrant() call —
+// npm run seed's mkdirSync is the only thing that creates data/.
+function openSeededDb(): Database.Database {
+  let db: Database.Database;
+  try {
+    db = openDb(DB_PATH);
+  } catch {
+    console.error(`No usable database at ${DB_PATH}. Run \`npm run seed\` first.`);
+    process.exit(1);
+  }
+
   let grant;
   try {
     grant = getGrant(db, DEMO_GRANT_ID);
   } catch {
-    console.error(`No usable database at ${DB_PATH}. Run \`npm run seed\` first.`);
+    console.error(`Database at ${DB_PATH} exists but hasn't been migrated. Run \`npm run seed\` first.`);
     process.exit(1);
   }
   if (grant === null) {
     console.error(`Database at ${DB_PATH} has no demo grant. Run \`npm run seed\` first.`);
     process.exit(1);
   }
+
+  return db;
 }
 
 function main(): void {
-  const db = openDb(DB_PATH);
-  assertSeeded(db);
+  const db = openSeededDb();
   const catalog = loadCatalog();
   const ctx = createAppContext(db, catalog);
 

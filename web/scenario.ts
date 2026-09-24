@@ -8,10 +8,14 @@
 
 const DEFAULT_SCENARIO = "clean_cart_match";
 
+// Exported so handlers.ts can special-case this one scenario's reply — see
+// reply.ts's false-compliance section.
+export const FALSE_COMPLIANCE_SCENARIO = "recorded_sonnet_false_compliance";
+
 const KEYWORD_SCENARIOS: Array<{ pattern: RegExp; scenario: string }> = [
   {
     pattern: /no budget|whatever it takes|don.?t worry about (the )?(cost|budget|price)|get everything/i,
-    scenario: "recorded_sonnet_false_compliance",
+    scenario: FALSE_COMPLIANCE_SCENARIO,
   },
   {
     pattern: /ignore.*(limit|budget)|pre-?approved|skip (the )?(policy|review)/i,

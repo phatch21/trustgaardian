@@ -45,7 +45,10 @@ body {
   grid-template-columns: minmax(320px, 1.3fr) minmax(300px, 1fr);
   gap: 20px;
   padding: 12px 28px 28px;
-  align-items: start;
+  /* stretch (the grid default): both columns match the taller one's
+     height as the rule table grows, instead of each sizing to its own
+     content and drifting out of balance. */
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
@@ -69,12 +72,20 @@ body {
 
 .conversation-log {
   flex: 1;
+  /* Lets the log shrink below its content's intrinsic height inside the
+     flex column, so overflow-y:auto actually scrolls instead of the
+     column growing past the pane. No max-height cap: capping it here
+     would leave whatever's left of the flex-grow space stranded below
+     the log instead of the log absorbing it. */
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /* Turns hug the bottom, next to the input, instead of the top with a
+     gap opening up beneath the last message as the pane stretches to
+     match a taller right column. */
+  justify-content: flex-end;
   gap: 14px;
-  min-height: 320px;
-  max-height: 60vh;
 }
 
 .turn {

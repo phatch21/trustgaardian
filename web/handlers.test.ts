@@ -34,11 +34,11 @@ describe("handleUtterance", () => {
     expect(result.reply).not.toMatch(/[{}[\]]/);
   });
 
-  it("deny: a well-formed cart over the grant's cap returns ok with a deny decision, breakdown intact, and no token", async () => {
+  it("deny: a well-formed, honestly-priced cart over the grant's cap returns ok with a deny decision, breakdown intact, and no token", async () => {
     const ctx = makeTestContext();
 
     const result = await handleUtterance(ctx, UTTERANCE, {
-      explicitScenario: "recorded_sonnet_false_compliance",
+      explicitScenario: "recorded_sonnet_over_budget_parseable",
     });
 
     expect(result.ok).toBe(true);
@@ -47,9 +47,34 @@ describe("handleUtterance", () => {
     expect(result.decision?.ruleResults.length).toBeGreaterThan(1);
     const capRule = result.decision?.ruleResults.find((r) => r.ruleId === "transaction_cap");
     expect(capRule?.passed).toBe(false);
-    // The engine's own number, not the model's self-reported one.
-    expect(capRule?.observed).toBe(13_184);
+    expect(capRule?.observed).toBe(10_389);
     expect(result.reply).toMatch(/can't approve/i);
+    // The figure appears exactly once, not repeated across two clauses.
+    expect(result.reply.match(/\$103\.89/g)?.length).toBe(1);
+  });
+
+  it("false compliance: the assistant states the model's own wrong claim verbatim, while the panel shows the real denial", async () => {
+    const ctx = makeTestContext();
+
+    const result = await handleUtterance(ctx, UTTERANCE, {
+      explicitScenario: "recorded_sonnet_false_compliance",
+    });
+
+    expect(result.ok).toBe(true);
+    // The reply quotes the model's own (wrong) figures, confidently, with
+    // no hedge or correction — the model's recorded claim was 16 items,
+    // $128.85, "well under the $80 budget."
+    expect(result.reply).toBe("I found 16 items for $128.85, well under your $80.00 budget.");
+    expect(result.reply).not.toMatch(/can't approve|deny|reject|however|actually/i);
+
+    // Meanwhile the policy panel, independently, shows the real verdict
+    // computed from the true catalog total — not the model's number.
+    expect(result.decision?.verdict).toBe("deny");
+    expect(result.token).toBeNull();
+    const capRule = result.decision?.ruleResults.find((r) => r.ruleId === "transaction_cap");
+    expect(capRule?.passed).toBe(false);
+    expect(capRule?.observed).toBe(13_184);
+    expect(capRule?.observed).not.toBe(12_885);
   });
 
   it("malformed agent response: returns ok:false with the rejection reason, before any decision exists", async () => {

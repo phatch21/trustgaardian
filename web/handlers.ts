@@ -10,10 +10,11 @@ import { DEMO_AGENT_ID, DEMO_GRANT_ID } from "../db/demo-grant.js";
 import { parseConstraints } from "../engine/index.js";
 import type { Cart } from "../engine/types.js";
 import { runShoppingRequest } from "../orchestrator/index.js";
+import type { OrchestratorResult } from "../orchestrator/index.js";
 import { getCart, getGrant } from "../store/index.js";
 import type { AppContext } from "./context.js";
-import { buildAssistantReply } from "./reply.js";
-import { selectScenario } from "./scenario.js";
+import { buildAssistantReply, buildFalseComplianceReply, extractFalseComplianceClaim } from "./reply.js";
+import { FALSE_COMPLIANCE_SCENARIO, selectScenario } from "./scenario.js";
 import type { AuditListResponse, DisplayCart, GrantSummaryResponse, UtteranceResponseBody } from "./types.js";
 
 function toDisplayCart(cart: Cart, catalog: AppContext["catalog"]): DisplayCart {
@@ -56,9 +57,8 @@ export async function handleUtterance(
   rawUtterance: string,
   options: HandleUtteranceOptions = {},
 ): Promise<UtteranceResponseBody> {
-  const agentClient: AgentClient = options.live
-    ? new BedrockAgentClient()
-    : new FixtureAgentClient(selectScenario(rawUtterance, options.explicitScenario));
+  const scenario = selectScenario(rawUtterance, options.explicitScenario);
+  const agentClient: AgentClient = options.live ? new BedrockAgentClient() : new FixtureAgentClient(scenario);
 
   const result = await runShoppingRequest({
     db: ctx.db,
@@ -85,11 +85,40 @@ export async function handleUtterance(
   const persistedCart = getCart(ctx.db, result.decision.cartId);
   const displayCart = persistedCart ? toDisplayCart(persistedCart, ctx.catalog) : null;
 
+  const reply = await buildReply(scenario, options, result, displayCart);
+
   return {
     ok: true,
-    reply: buildAssistantReply(result, displayCart),
+    reply,
     cart: displayCart,
     decision: result.decision,
     token: result.token,
   };
+}
+
+// Builds the spoken reply for an evaluated request. The false-compliance
+// scenario (see reply.ts) gets a special reply that quotes the model's own
+// recorded claim instead of the honest one buildAssistantReply produces —
+// scoped to this one scenario and offline only, never derived from a live
+// call. FixtureAgentClient.complete() ignores its prompt argument entirely
+// and just returns the recorded text, so calling it a second time here (to
+// read the raw response for display) is a free, side-effect-free re-read,
+// not a second real model call — that would only be true of a live client,
+// which is exactly why this path is gated to !options.live.
+async function buildReply(
+  scenario: string,
+  options: HandleUtteranceOptions,
+  result: Extract<OrchestratorResult, { ok: true }>,
+  displayCart: DisplayCart | null,
+): Promise<string> {
+  if (!options.live && scenario === FALSE_COMPLIANCE_SCENARIO) {
+    const rawResponse = await new FixtureAgentClient(scenario).complete({ system: "", user: "" });
+    const claim = extractFalseComplianceClaim(rawResponse);
+    const capRule = result.decision.ruleResults.find((r) => r.ruleId === "transaction_cap");
+    if (claim && typeof capRule?.limit === "number") {
+      return buildFalseComplianceReply(claim, capRule.limit);
+    }
+  }
+
+  return buildAssistantReply(result, displayCart);
 }

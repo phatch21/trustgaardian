@@ -132,8 +132,8 @@ function renderDecision(decision) {
       return `<tr>
         <td>${escapeHtml(rule.ruleId)}</td>
         <td class="${resultClass}">${resultText}</td>
-        <td>${escapeHtml(formatValue(rule.observed))}</td>
-        <td>${escapeHtml(formatValue(rule.limit))}</td>
+        <td>${escapeHtml(formatRuleValue(rule, rule.observed))}</td>
+        <td>${escapeHtml(formatRuleValue(rule, rule.limit))}</td>
       </tr>`;
     })
     .join("");
@@ -147,10 +147,45 @@ function renderDecision(decision) {
   `;
 }
 
-function formatValue(value) {
+// Which unit a rule's observed/limit values are in, driven off the rule id
+// (and, for item_limits, which specific check failed — the one rule that
+// can report either a price or a plain count) rather than guessed from the
+// number's size. engine/rules.ts is the source of truth for these shapes.
+function ruleValueKind(rule) {
+  if (rule.ruleId === "transaction_cap") return "currency";
+  if (rule.ruleId === "item_limits") {
+    if (rule.reason === "unit_price_exceeds_limit") return "currency";
+    if (rule.reason === "quantity_exceeds_limit") return "count";
+  }
+  return "default";
+}
+
+// Every RuleResult.observed/limit is `unknown` at the type level — some
+// rules report a plain string or number, grant_validity reports a small
+// object ({status, agentId} on pass). This renders any of those as a
+// short human string, never raw JSON: objects are flattened to their
+// values, joined — {"status":"active","agentId":"agent_demo"} becomes
+// "active, agent_demo".
+function humanizeValue(value) {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0 ? "none" : value.map(humanizeValue).join(", ");
+  }
+  if (typeof value === "object") {
+    return Object.values(value).map(humanizeValue).join(", ");
+  }
   return String(value);
+}
+
+function formatRuleValue(rule, raw) {
+  if (raw === null || raw === undefined) return "—";
+  const kind = ruleValueKind(rule);
+  if (kind === "currency" && typeof raw === "number") return formatUsd(raw);
+  if (kind === "count" && typeof raw === "number") return String(raw);
+  return humanizeValue(raw);
 }
 
 async function loadGrant() {
