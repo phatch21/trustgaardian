@@ -40,20 +40,123 @@ function reject(reason: CartRejectionReason, detail: string): ParseCartResult {
 }
 
 // Models sometimes wrap valid JSON in prose or markdown fences despite
-// being told not to. Try a direct parse first; if that fails, fall back
-// to the first balanced-looking {...} block in the text.
+// being told not to, and real reasoning prose can itself contain a stray
+// '{' or '}' — a parenthetical, a set-like aside, anything — well before
+// the actual cart JSON begins. A single greedy /\{[\s\S]*\}/ match (the
+// previous approach) matches from the first brace anywhere in the text to
+// the last brace anywhere, which breaks the moment prose contains one: it
+// spans from that stray brace straight through to the real JSON's closing
+// brace, producing an unparseable blob. See docs/friction.md.
+//
+// Extraction happens in three steps, most specific signal first:
+//   1. The raw text is valid JSON as-is — the model followed instructions
+//      exactly.
+//   2. A markdown-fenced block (```json ... ``` or ``` ... ```), if
+//      present, is the model's own explicit delimiter for its answer —
+//      tried before the general scan because it's unambiguous when it's
+//      there.
+//   3. A general scan: walk the string tracking brace depth, treating
+//      text inside JSON string literals (respecting \" escapes) as inert
+//      so a brace inside a "reasoning" field's value never affects depth.
+//      This collects every *balanced top-level* {...} span — nested
+//      braces never start a new span, only depth returning to zero closes
+//      one. Candidates are tried last-to-first (models put reasoning
+//      before the answer, not after) and the first one that parses into
+//      an object with an items array wins.
+//
+// Every step here only decides *which substring is the candidate JSON* —
+// none of it decides whether that JSON is a valid cart. That's still
+// entirely parseCartResponse's job, below, untouched.
+
+function looksLikeCart(value: unknown): boolean {
+  return typeof value === "object" && value !== null && Array.isArray((value as { items?: unknown }).items);
+}
+
+// Every balanced top-level {...} span in `text`, in the order they
+// appear. A "top-level" span is one that starts while brace depth is 0;
+// anything nested inside it (an item object inside "items", say) is part
+// of that span, not a separate candidate of its own. Braces inside JSON
+// string values (respecting \" escapes) never affect depth, so a
+// reasoning field like "fits the {theme} perfectly" can't fool this into
+// mis-splitting the object it's inside — and by the same mechanism, an
+// ordinary English quotation containing a brace in the surrounding prose
+// is equally inert, since it's balanced open/close quotes either way.
+function findBalancedObjects(text: string): string[] {
+  const spans: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (inString) {
+      if (ch === "\\") escapeNext = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === "}") {
+      if (depth > 0) {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          spans.push(text.slice(start, i + 1));
+          start = -1;
+        }
+      }
+    }
+  }
+
+  return spans;
+}
+
+function extractFencedJson(text: string): string | undefined {
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return match?.[1]?.trim();
+}
+
+function tryParseCart(candidate: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(candidate);
+    return looksLikeCart(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function extractJson(raw: string): unknown {
   try {
     return JSON.parse(raw);
   } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return undefined;
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return undefined;
-    }
+    // fall through to the recovery steps below
   }
+
+  const fenced = extractFencedJson(raw);
+  if (fenced !== undefined) {
+    const fromFence = tryParseCart(fenced);
+    if (fromFence !== undefined) return fromFence;
+  }
+
+  const candidates = findBalancedObjects(raw);
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const candidate = candidates[i];
+    if (candidate === undefined) continue;
+    const parsed = tryParseCart(candidate);
+    if (parsed !== undefined) return parsed;
+  }
+
+  return undefined;
 }
 
 export function parseCartResponse(raw: string, catalog: CatalogItem[]): ParseCartResult {

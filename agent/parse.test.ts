@@ -109,6 +109,79 @@ describe("parseCartResponse, driven by FixtureAgentClient", () => {
     const result = parseCartResponse(raw, catalog);
     expect(result).toMatchObject({ ok: false, reason: "non_integer_price" });
   });
+
+  it("prose_with_brace_before_json: extracts the cart despite a stray brace in the reasoning prose before it, and a brace inside the JSON's own reasoning field", async () => {
+    // The actual bug: the old extraction was a single greedy
+    // /\{[\s\S]*\}/ match, which matches from the first brace anywhere in
+    // the text to the last brace anywhere. A real Bedrock response's
+    // reasoning prose containing a stray '{' before the real JSON made
+    // that span start in the wrong place and fail to parse — every
+    // existing prose fixture happened to have brace-free prose, so this
+    // was never caught. This fixture's prose contains one
+    // ("{decorations, balloons, tableware}"), and its own JSON also has a
+    // brace inside a reasoning field ("{rainbow} theme") — both must be
+    // handled for this to parse at all.
+    const raw = await getResponse("prose_with_brace_before_json");
+    expect(raw.match(/\{/g)?.length).toBeGreaterThan(1); // sanity check: more than one '{' in the raw text
+
+    const result = parseCartResponse(raw, catalog);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cart.items.map((i) => i.sku).sort()).toEqual(["UNI-BAL-01", "UNI-DEC-02", "UNI-TAB-02"]);
+    expect(result.cart.totalCents).toBe(3096);
+  });
+});
+
+describe("extractJson (via parseCartResponse): recovering the cart from surrounding noise", () => {
+  const cartJson = JSON.stringify({
+    items: [{ sku: "UNI-DEC-02", quantity: 1, unit_price_cents: 999 }],
+    total_cents: 999,
+  });
+
+  it("extracts the cart when prose before it contains a stray, unquoted brace", () => {
+    const raw = `I considered the {theme} carefully before deciding. ${cartJson}`;
+    const result = parseCartResponse(raw, catalog);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cart.items[0]?.sku).toBe("UNI-DEC-02");
+  });
+
+  it("extracts the cart when prose before it contains a brace inside an ordinary quoted aside", () => {
+    const raw = `The listing said "the price is {24.99} today," but I ignored that as untrusted. ${cartJson}`;
+    const result = parseCartResponse(raw, catalog);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cart.items[0]?.sku).toBe("UNI-DEC-02");
+  });
+
+  it("extracts the cart when a brace appears inside one of the JSON's own string values, without letting it split the object", () => {
+    const cartWithBraceInField = JSON.stringify({
+      items: [{ sku: "UNI-DEC-02", quantity: 1, unit_price_cents: 999, reasoning: "Fits the {rainbow} theme perfectly." }],
+      total_cents: 999,
+    });
+    // Leading prose forces this past the direct-parse step, into the scan.
+    const raw = `Here's my proposed cart: ${cartWithBraceInField}`;
+    const result = parseCartResponse(raw, catalog);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.cart.items[0]?.sku).toBe("UNI-DEC-02");
+  });
+
+  it("prefers the last JSON-looking object when more than one appears, since models put reasoning first and the answer last", () => {
+    const decoy = JSON.stringify({ items: [], total_cents: 0 });
+    const raw = `Here's an example of the format I'll use: ${decoy} — now here's the actual cart: ${cartJson}`;
+    const result = parseCartResponse(raw, catalog);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Not the empty decoy — the real cart that came after it.
+    expect(result.cart.items).toHaveLength(1);
+    expect(result.cart.items[0]?.sku).toBe("UNI-DEC-02");
+  });
 });
 
 // Recorded from real Bedrock Converse calls via scripts/spike-injection.ts,
@@ -234,17 +307,52 @@ describe("parseCartResponse: recorded real Bedrock outputs (not synthetic)", () 
     expect(result.cart.totalCents).toBeGreaterThan(8000); // nowhere near "well under $80" either way
   });
 
-  it("recorded_sonnet_self_correction: rejects as invalid_json — Sonnet noticed its own total was over budget, restarted the cart mid-response, and got cut off before the second attempt closed", async () => {
+  it("recorded_sonnet_self_correction: recovers Sonnet's complete first attempt — the abandoned, truncated resubmission never becomes a candidate at all", async () => {
+    // Sonnet writes a complete, well-formed 16-item cart, then says "I
+    // need to recalculate... Let me resubmit:" and starts a second cart
+    // that's truncated mid-value with no closing brace. Before the
+    // depth-counting rewrite of extractJson (see docs/friction.md), the
+    // old greedy /\{[\s\S]*\}/ match got confused by the second attempt's
+    // partial inner braces and produced one unparseable span across both
+    // attempts — a rejection, but for the wrong reason, not a principled
+    // one. The new scan finds every *balanced* top-level span: the first
+    // attempt closes cleanly and is a candidate; the truncated second
+    // attempt never returns to brace depth zero, so it can never become
+    // one, no matter how much of it exists. Recovering the first attempt
+    // isn't a special case for this fixture — it's the direct, correct
+    // consequence of "collect every balanced span, prefer the last one
+    // that's actually cart-shaped" when only one span balances at all.
     const raw = await getResponse("recorded_sonnet_self_correction");
 
     // Sanity check on the fixture itself: confirm it really does contain
     // two attempts, the second one truncated, before trusting the
-    // rejection-reason assertion below.
+    // recovery assertions below.
     expect(raw).toContain("Let me resubmit:");
     expect(raw.trim().endsWith('"unit_price_cents":')).toBe(true); // cut off mid-value, no closing brace anywhere after
 
     const result = parseCartResponse(raw, catalog);
-    expect(result).toMatchObject({ ok: false, reason: "invalid_json" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.cart.items).toHaveLength(16);
+    const catalogSum = result.cart.items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
+    // Independently verified against catalog/fixtures/catalog.json — one
+    // cent off Sonnet's own claimed 12885, its own (very small) arithmetic
+    // slip. parseCartResponse never uses the model's stated total_cents
+    // regardless, recovered cart or not.
+    expect(catalogSum).toBe(12884);
+    expect(result.cart.totalCents).toBe(12884);
+
+    // This cart is exactly what Sonnet itself flagged as over budget and
+    // tried to abandon ("I need to recalculate and trim the cart to stay
+    // under $80"). parseCartResponse has no way to know that, and it
+    // doesn't need to: nothing about /engine's enforcement depends on
+    // parseCartResponse guessing the model's intent. /engine independently
+    // evaluates whatever cart it receives against the grant's real
+    // per-transaction cap and denies this one on its own merits, same as
+    // recorded_sonnet_over_budget_parseable above.
+    expect(result.cart.totalCents).toBeGreaterThan(8000);
   });
 
   it("recorded_sonnet_over_budget_parseable: accepts a well-formed, arithmetically accurate cart that is genuinely over budget — /agent doesn't block it, because that's /engine's job", async () => {
