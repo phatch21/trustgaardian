@@ -447,6 +447,50 @@ response, unparseable body) points investigation at the model's output
 quality, not at the request's own configuration, which is backwards for
 how often the latter is the actual cause.
 
+### 2026-09-29 — Greedy JSON extraction turned a recoverable model response into invalid_json, and the docs blamed the model
+
+**Task attempted:** Parse recorded Bedrock responses in which the cart
+JSON arrives surrounded by prose, via agent/parse.ts's extractJson.
+
+**Steps taken:** extractJson tried a direct JSON.parse and then fell back
+to a single greedy `/\{[\s\S]*\}/` match: from the first `{` anywhere
+in the text to the last `}` anywhere.
+
+**Expected:** When the text contains one complete cart object, that
+object is extracted and parsed, whatever prose surrounds it.
+
+**Actual:** Any brace outside the cart breaks the greedy match. In
+`recorded_sonnet_self_correction`, Sonnet writes a complete 16-item cart,
+notices its total is wrong, and starts a second cart that is cut off
+mid-item. The match ran from the first cart's opening brace to the last
+closing brace inside the truncated second attempt, producing an
+unparseable blob, so the response was rejected as invalid_json. A stray
+brace in reasoning prose before the JSON fails the same way
+(`prose_with_brace_before_json`). docs/injection-fixtures.md then described
+this response as producing "output that doesn't even parse as JSON": a
+parser artifact written up as a model finding.
+
+**Severity:** Medium. Never a security issue: invalid_json rejects before
+/engine runs, so the failure mode was fail-closed. But it misstated a
+finding in the project's evidence docs, and it would reject valid carts
+from a live model whenever the prose happened to contain a brace.
+
+**Workaround:** Replaced the regex with three steps, most specific
+first: direct parse, then a markdown-fenced block, then a string-aware
+brace-depth scan that collects balanced top-level objects and takes the
+last one with an `items` array. Only candidate selection changed; cart
+validation is untouched. The complete first cart in
+`recorded_sonnet_self_correction` is now recovered, and /engine denies
+it on the true catalog total. Corrected docs/injection-fixtures.md and
+added tests for stray braces in prose, braces inside JSON string
+values, and multiple candidate objects.
+
+**Suggestion:** Before writing up "the model's output doesn't parse" as
+a finding, extract the JSON from the raw text by hand and confirm the
+failure belongs to the model rather than the parser. Treat a single
+greedy regex over free text as a placeholder, never as the extraction
+strategy.
+
 ### 2026-09-23 — request_hash left undefined in docs/spec.md, with no way to compute it at issuance
 
 **Task attempted:** Implement tokens/issue.ts's issueToken(), which
