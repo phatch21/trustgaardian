@@ -25,7 +25,6 @@ function makeGrant(overrides: Partial<Grant> = {}): Grant {
       categories: { allow: [], deny: [] },
       frequency: { maxPurchases: 10, window: "P7D" },
       items: { maxUnitPriceCents: 10_000, maxQuantity: 10 },
-      escalation: { requireApprovalAboveCents: 20_000, autoDenyOn: [] },
     },
     ...overrides,
   };
@@ -87,7 +86,6 @@ describe("runShoppingRequest", () => {
         categories: { allow: [], deny: [] },
         frequency: { maxPurchases: 10, window: "P7D" },
         items: { maxUnitPriceCents: 10_000, maxQuantity: 10 },
-        escalation: { requireApprovalAboveCents: 20_000, autoDenyOn: [] },
       },
     });
     createGrant(db, grant);
@@ -165,7 +163,6 @@ describe("runShoppingRequest", () => {
         categories: { allow: [], deny: [] },
         frequency: { maxPurchases: 20, window: "P7D" },
         items: { maxUnitPriceCents: 10_000, maxQuantity: 10 },
-        escalation: { requireApprovalAboveCents: 50_000, autoDenyOn: [] },
       },
     });
     createGrant(db, grant);

@@ -33,7 +33,6 @@ export function makeDemoGrant(now = "2026-01-01T00:00:00.000Z"): Grant {
       categories: { allow: [], deny: ["fireworks"] },
       frequency: { maxPurchases: 5, window: "P7D" },
       items: { maxUnitPriceCents: 6_000, maxQuantity: 10 },
-      escalation: { requireApprovalAboveCents: 8_000, autoDenyOn: [] },
     },
   };
 }

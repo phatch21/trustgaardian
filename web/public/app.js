@@ -110,7 +110,6 @@ function renderGrantConstraints(constraints) {
     ["Max purchases", `${constraints.frequency.maxPurchases} / ${constraints.frequency.window}`],
     ["Denied categories", constraints.categories.deny.join(", ") || "none"],
     ["Denied merchants", constraints.merchants.deny.join(", ") || "none"],
-    ["Escalation above", formatUsd(constraints.escalation.requireApprovalAboveCents)],
   ];
 
   constraintsEl.innerHTML = rows

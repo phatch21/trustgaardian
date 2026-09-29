@@ -46,7 +46,7 @@ function parseExecutionToken(raw: unknown): ExecutionToken | null {
   if (!isNonEmptyString(t.agentId)) return null;
   if (!isHex(t.requestHash, 32)) return null;
   if (!isHex(t.cartHash, 32)) return null;
-  if (t.verdict !== "allow" && t.verdict !== "deny" && t.verdict !== "escalate") return null;
+  if (t.verdict !== "allow" && t.verdict !== "deny") return null;
   if (!isNonEmptyString(t.issuedAt) || Number.isNaN(Date.parse(t.issuedAt))) return null;
   if (!isNonEmptyString(t.expiresAt) || Number.isNaN(Date.parse(t.expiresAt))) return null;
   if (!isNonEmptyString(t.nonce)) return null;

@@ -41,7 +41,7 @@ describe("parseConstraints", () => {
 
   it("fails closed when a whole constraint section is missing", () => {
     const raw = makeConstraints() as unknown as Record<string, unknown>;
-    const { escalation: _escalation, ...withoutEscalation } = raw;
-    expect(parseConstraints(withoutEscalation)).toBeNull();
+    const { frequency: _frequency, ...withoutFrequency } = raw;
+    expect(parseConstraints(withoutFrequency)).toBeNull();
   });
 });

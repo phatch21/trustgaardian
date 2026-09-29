@@ -5,7 +5,7 @@ task under it; a Decision authorizes exactly one Cart.
 
 | Object         | Purpose                                       | Key fields                                                                                    |
 | -------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Grant          | Standing authorization from user to one agent | id, user_id, agent_id, expires_at, status, constraints, escalation                            |
+| Grant          | Standing authorization from user to one agent | id, user_id, agent_id, expires_at, status, constraints                                        |
 | Request        | One shopping task under a grant               | id, grant_id, raw_utterance, structured (goal, qualifiers, budget, deadline)                  |
 | Cart           | What the agent proposes                       | id, request_id, items (sku, merchant, unit_price, qty, category), total                       |
 | Decision       | Policy engine output                          | id, cart_id, verdict, rule_results, evaluated_at                                              |
@@ -20,7 +20,6 @@ merchants:  { allow[], deny[] }
 categories: { allow[], deny[] }
 frequency:  { max_purchases, window }
 items:      { max_unit_price, max_quantity }
-escalation: { require_approval_above, auto_deny_on[] }
 ```
 
 ## Rule evaluation
@@ -37,14 +36,13 @@ Order, most restrictive first so the audit trail reads clearly:
 4. Cart total against per-transaction cap
 5. Rolling window spend against per-window cap
 6. Frequency against window
-7. Escalation threshold
 
 Every rule returns `{ rule_id, passed, reason, observed, limit }`. All rules
 run even after the first failure, so the UI shows the complete picture rather
 than the first tripwire.
 
-Verdicts: allow, deny, escalate. Escalate pauses for explicit user
-confirmation and, once confirmed, issues a token exactly as allow does.
+Verdicts: allow, deny. Nothing produces a third verdict. Escalation was
+cut from scope (see Future work).
 
 ## ExecutionToken
 
@@ -106,13 +104,6 @@ code 0 or 1, so it also works as a CI check. It lives outside /audit
 on purpose, same reasoning as everywhere else in this codebase: /audit's
 job is append and verify, not argv parsing or process.exit.
 
-## Escalation UX
-
-When a cart escalates, the user sees the cart, the rule that triggered, the
-observed value against the limit, and two buttons. Approving re-runs the full
-evaluation rather than trusting the earlier result, since the cart may have
-changed while the user was deciding.
-
 ## Agent binding
 
 A grant binds to a single agent identity. It authorizes one registered
@@ -145,3 +136,29 @@ it.
 - Unit tests on every rule, each with a passing and a failing case
 - One end-to-end test per defended threat, asserting the attack fails
 - An audit chain verifier test that tampering is detected
+
+## Future work
+
+Cut from scope, not in progress. Nothing in the code implements or reserves
+any of this.
+
+### Rule 7: escalation threshold
+
+A third verdict, `escalate`, for carts above a `require_approval_above`
+threshold, plus an `auto_deny_on[]` list, carried as an `escalation` block
+in the grant constraints. Escalate would pause for explicit user
+confirmation and, once confirmed, issue a token exactly as allow does.
+
+Cut because it didn't hold together in practice. The demo grant set the
+threshold equal to the per-transaction cap, so rule 4 denied every cart
+above it first and escalation could never fire. Making it meaningful needs
+a threshold below the cap, a third verdict through /tokens and /checkout,
+new audit event types, and the UX below, which is not justified by
+anything in docs/demo-script.md.
+
+### Escalation UX
+
+When a cart escalates, the user sees the cart, the rule that triggered, the
+observed value against the limit, and two buttons. Approving re-runs the full
+evaluation rather than trusting the earlier result, since the cart may have
+changed while the user was deciding.

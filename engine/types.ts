@@ -34,18 +34,12 @@ export interface ItemConstraint {
   maxQuantity: number;
 }
 
-export interface EscalationConstraint {
-  requireApprovalAboveCents: Cents;
-  autoDenyOn: string[];
-}
-
 export interface GrantConstraints {
   spend: SpendConstraint;
   merchants: MerchantConstraint;
   categories: CategoryConstraint;
   frequency: FrequencyConstraint;
   items: ItemConstraint;
-  escalation: EscalationConstraint;
 }
 
 export interface Grant {
@@ -77,7 +71,7 @@ export interface Cart {
   createdAt: string;
 }
 
-export type Verdict = "allow" | "deny" | "escalate";
+export type Verdict = "allow" | "deny";
 
 export interface RuleResult {
   ruleId: string;

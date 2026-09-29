@@ -1,8 +1,7 @@
 // Orchestrates rules 1-4 against one grant and one proposed cart. All rules
 // run regardless of earlier failures, so the audit trail and the UI show
 // the complete picture rather than the first tripwire. Verdict is "deny"
-// unless every rule passes — "allow" is the only other verdict rules 1-4
-// can produce; "escalate" arrives with rule 7, not implemented here.
+// unless every rule passes, and "allow" is the only other verdict.
 //
 // Pure: id and evaluatedAt are supplied by the caller rather than generated
 // here, so evaluate() has no hidden clock or randomness.

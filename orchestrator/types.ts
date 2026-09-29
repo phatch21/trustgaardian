@@ -17,7 +17,7 @@ export type OrchestratorRejectionReason = "grant_not_found" | CartRejectionReaso
 // ok:true always carries a Decision — /engine ran and rendered a verdict,
 // with its full per-rule breakdown in decision.ruleResults regardless of
 // which way it went. token is non-null exactly when decision.verdict is
-// "allow"; deny and escalate carry the decision (so /web can render why)
+// "allow"; deny carries the decision (so /web can render why)
 // with no token, since none was issued. ok:false means /engine never ran
 // at all: either the grant didn't exist, or the agent's response didn't
 // parse into a proposable cart.

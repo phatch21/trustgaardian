@@ -9,7 +9,6 @@ export function makeConstraints(overrides: Partial<GrantConstraints> = {}): Gran
     categories: { allow: [], deny: [] },
     frequency: { maxPurchases: 10, window: "P7D" },
     items: { maxUnitPriceCents: 5_000, maxQuantity: 5 },
-    escalation: { requireApprovalAboveCents: 20_000, autoDenyOn: [] },
     ...overrides,
   };
 }

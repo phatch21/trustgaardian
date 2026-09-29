@@ -46,13 +46,6 @@ export function parseConstraints(raw: unknown): GrantConstraints | null {
     return null;
   }
 
-  const escalation = root.escalation;
-  if (typeof escalation !== "object" || escalation === null) return null;
-  const e = escalation as Record<string, unknown>;
-  if (!isNonNegativeInteger(e.requireApprovalAboveCents) || !isStringArray(e.autoDenyOn)) {
-    return null;
-  }
-
   return {
     spend: {
       perTransactionCents: s.perTransactionCents as number,
@@ -66,10 +59,6 @@ export function parseConstraints(raw: unknown): GrantConstraints | null {
     items: {
       maxUnitPriceCents: i.maxUnitPriceCents as number,
       maxQuantity: i.maxQuantity as number,
-    },
-    escalation: {
-      requireApprovalAboveCents: e.requireApprovalAboveCents as number,
-      autoDenyOn: e.autoDenyOn as string[],
     },
   };
 }
