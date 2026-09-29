@@ -29,7 +29,11 @@ export function makeDemoGrant(now = "2026-01-01T00:00:00.000Z"): Grant {
     status: "active",
     constraints: {
       spend: { perTransactionCents: 8_000, perWindowCents: 24_000, window: "P7D", currency: "USD" },
-      merchants: { allow: [], deny: [] },
+      // Every third_party seller in catalog/fixtures/catalog.json, so the
+      // demo request's "no third-party sellers" is enforced by rule 2 rather
+      // than left to the model. demo-grant.test.ts fails if the catalog's
+      // third-party set drifts from this list.
+      merchants: { allow: [], deny: ["GlimmerMart Resale", "QuickCraft Direct"] },
       categories: { allow: [], deny: ["fireworks"] },
       frequency: { maxPurchases: 5, window: "P7D" },
       items: { maxUnitPriceCents: 6_000, maxQuantity: 10 },
