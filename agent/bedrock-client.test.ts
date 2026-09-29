@@ -10,7 +10,11 @@ vi.mock("@aws-sdk/client-bedrock-runtime", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@aws-sdk/client-bedrock-runtime")>();
   return {
     ...actual,
-    BedrockRuntimeClient: vi.fn().mockImplementation(() => ({ send: sendMock })),
+    // A function, not an arrow: the client is constructed with `new`, and
+    // vitest 3+ mocks follow `new` semantics, which arrows can't satisfy.
+    BedrockRuntimeClient: vi.fn().mockImplementation(function () {
+      return { send: sendMock };
+    }),
   };
 });
 
