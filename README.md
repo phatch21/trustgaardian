@@ -94,7 +94,7 @@ npm run dev           # split-view demo at http://localhost:3000
 npm run verify-chain  # independently walks the audit log's hash chain
 ```
 
-Requires Node 20+.
+Requires Node 22+.
 
 The demo runs offline by default. Agent replies come from recorded model
 responses in `agent/fixtures/agent-responses.json`, so a demo run never

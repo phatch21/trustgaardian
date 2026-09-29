@@ -125,6 +125,61 @@ setup instructions rather than relying on whatever Microsoft's linked doc
 says — a contributor on a fresh Windows machine shouldn't have to
 rediscover this.
 
+### 2026-09-29 — Fresh-clone `npm install` compiles better-sqlite3 from source despite `gypfile: false` and bundled prebuilts
+
+**Task attempted:** Verify the README's setup sequence (`npm install`,
+`npm run seed`, `npm test`, `npm run verify-chain`) on a fresh clone
+before pushing for submission.
+
+**Steps taken:** Cloned the repo into an empty directory and ran
+`npm install`. Retried with `npm ci`.
+
+**Expected:** Install succeeds. better-sqlite3 13.0.3 has no install
+script, declares `gypfile: false`, and ships prebuilt binaries for every
+supported platform inside the package tarball, loaded at runtime by
+`lib/binding.js`. There is nothing to download and nothing to compile.
+
+**Actual:** Both commands failed in `node-gyp rebuild` for better-sqlite3,
+with `gyp ERR! find VS ... missing any VC++ toolset`. The error points at
+node-gyp and Visual Studio, not at the real cause, and nothing in the
+output mentions prebuilt binaries. The cause is in npm itself. Arborist
+adds an implicit `node-gyp rebuild` install script to any package that
+has a binding.gyp and no install/preinstall script, unless the package
+declares `gypfile: false` (arborist/rebuild.js). In a lockfile-driven
+install it reads package metadata from the lockfile, and lockfile
+entries do not carry `gypfile`, so the opt-out is lost and the package
+compiles anyway. Confirmed both ways: with package-lock.json deleted,
+`npm install` succeeds and uses the prebuilt binary; rerunning it with
+the lockfile it just wrote fails again. The original working copy only
+worked because its first install ran before a lockfile existed.
+
+On macOS and Linux with build tools present, the same path compiles
+better-sqlite3 from source instead of failing: slower, but silent. The
+bug is invisible to most developers and only surfaces as a hard failure
+on a stock Windows machine without C++ build tools.
+
+**Severity:** High. It's the first command in the README, it fails on a
+fresh clone, and it blocks a judge following the README verbatim.
+Existing working copies never show it.
+
+**Workaround:** Committed a project `.npmrc` with `ignore-scripts=true`,
+with a comment explaining the cause. No dependency needs an install
+script; `npm test` and `npm run <name>` still run their scripts, and only
+pre/post hooks are skipped (there are none). Considered and rejected:
+pinning another better-sqlite3 version (older versions use
+`prebuild-install || node-gyp rebuild`, which reintroduces a
+compile-on-download-failure fallback) and switching to `node:sqlite`
+(21 files, including hand-writing the `BEGIN IMMEDIATE` transactions
+behind single-use tokens and audit append, weeks before the deadline).
+
+**Suggestion:** npm should record `gypfile: false` in the lockfile entry,
+or re-read the installed package.json before synthesizing a gyp install
+script. When it does synthesize one, the failure output should say the
+script was implicit and that the package opted out. Separately, verify
+setup instructions on a fresh clone rather than an existing working
+copy: an install that worked once in a working copy says nothing about
+the next clone.
+
 ### 2026-09-24 — `>` redirection writes UTF-16LE, and console-codepage mismatches mangle UTF-8 punctuation inside it
 
 **Task attempted:** Capture a spike run's console output
