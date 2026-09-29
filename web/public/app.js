@@ -101,13 +101,15 @@ function escapeHtml(value) {
   return div.innerHTML;
 }
 
+// Shows only constraints some /engine rule actually checks. spend.perWindowCents
+// and frequency.* are deliberately omitted: they are parsed and seeded as inputs
+// for rules 5 and 6, which are not built, so displaying them would claim
+// enforcement that doesn't exist. Add a row back only alongside its rule.
 function renderGrantConstraints(constraints) {
   const rows = [
     ["Per-transaction cap", formatUsd(constraints.spend.perTransactionCents)],
-    ["Per-window cap", `${formatUsd(constraints.spend.perWindowCents)} / ${constraints.spend.window}`],
     ["Per-item cap", formatUsd(constraints.items.maxUnitPriceCents)],
     ["Max quantity per item", String(constraints.items.maxQuantity)],
-    ["Max purchases", `${constraints.frequency.maxPurchases} / ${constraints.frequency.window}`],
     ["Denied categories", constraints.categories.deny.join(", ") || "none"],
     ["Denied merchants", constraints.merchants.deny.join(", ") || "none"],
   ];

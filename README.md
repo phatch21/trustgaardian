@@ -115,9 +115,10 @@ measurement above against the same model.
 
 The spec's rules 5 and 6 (rolling-window spend, purchase frequency) are not
 implemented, so splitting one budget across several transactions is not
-defended. The grant panel still shows those limits, but nothing enforces
-them. Rule 7 (escalation) was cut from scope; see docs/spec.md's Future
-work. The engine evaluates rules 1–4 and returns `allow` or `deny`.
+defended. The grant still stores those limits for when the rules are built,
+but the demo's grant panel shows only the constraints the engine enforces.
+Rule 7 (escalation) was cut from scope; see docs/spec.md's Future work. The
+engine evaluates rules 1–4 and returns `allow` or `deny`.
 
 ## License
 
