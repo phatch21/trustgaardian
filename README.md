@@ -103,6 +103,15 @@ The catalog, including the planted injection payloads, loads from
 `catalog/fixtures/catalog.json`. docs/demo-script.md describes the three
 demo beats the UI is built to show.
 
+The demo controls mutate persistent state. "Tamper entry" really rewrites
+an audit row in `data/trustgaardian.db`, so `npm run verify-chain` keeps
+failing until the chain is reset, and re-running `npm run seed` does not
+fix it, because seed only inserts what is missing. To recover, use **Reset
+demo state** in the demo panel. It clears every grant, request, cart,
+decision, token and audit entry, reseeds the demo grant, and restarts the
+chain at genesis, so `npm run verify-chain` passes immediately afterward.
+It only touches the demo database, never the catalog fixtures.
+
 ### Live model calls (optional)
 
 To make live Bedrock calls instead, set `BEDROCK_MODEL_ID` and `AWS_REGION`,

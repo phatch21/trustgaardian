@@ -117,7 +117,7 @@ input {
   display: flex;
   align-items: baseline;
   gap: var(--size-4);
-  padding: var(--size-4) var(--size-7) var(--size-3);
+  padding: var(--size-3) var(--size-7);
 }
 
 .app-header h1 {
@@ -638,7 +638,7 @@ input {
 }
 
 .demo-warning {
-  margin: 0 0 var(--size-2);
+  margin: 0 0 var(--size-1);
   font-size: var(--text-xs);
   color: var(--ink-3);
 }
@@ -655,6 +655,19 @@ input {
 
 .demo-control:last-child {
   padding-bottom: 0;
+}
+
+/* Button only, no heading or description: the label says what it does,
+   the confirm dialog says what it clears, and the panel has no vertical
+   room to spare at 1080p with every other result showing. */
+.demo-reset {
+  display: flex;
+  align-items: center;
+  gap: var(--size-3);
+}
+
+.demo-reset .demo-result {
+  margin: 0;
 }
 
 .demo-control h3 {
@@ -704,7 +717,7 @@ input {
 }
 
 .audit-log {
-  max-height: 6.5rem;
+  max-height: 4.5rem;
   overflow-y: auto;
   scrollbar-width: thin;
   font-size: var(--text-xs);

@@ -1,6 +1,6 @@
 // The three demo affordances from docs/demo-script.md, each attacking the
 // system it's paired with using the real /checkout and /audit code — none
-// of this fakes an outcome. The one exception is tamper-audit's raw SQL:
+// of this fakes an outcome — plus a reset that undoes them. The one exception is tamper-audit's raw SQL:
 // corrupting an audit row on purpose is not something /audit's real API
 // should expose next to appendEntry and verifyChain, so that one UPDATE
 // statement lives here instead, clearly marked as a demo control rather
@@ -11,10 +11,11 @@ import { verifyChain } from "../audit/index.js";
 import type { VerifyChainResult } from "../audit/types.js";
 import { attemptCheckout } from "../checkout/index.js";
 import { DEMO_AGENT_ID, DEMO_IMPOSTOR_AGENT_ID } from "../db/demo-grant.js";
+import { resetDemoState } from "../db/reset.js";
 import type { Cart } from "../engine/types.js";
 import { getCart } from "../store/index.js";
 import type { AppContext } from "./context.js";
-import type { DemoCheckoutResult, TamperAuditResult } from "./types.js";
+import type { DemoCheckoutResult, ResetDemoResult, TamperAuditResult } from "./types.js";
 
 // Bumps the first item's quantity by one, producing a cart whose hash no
 // longer matches the one the token was signed over — docs/threat-model.md
@@ -63,4 +64,11 @@ export function handleTamperAudit(ctx: AppContext, seq: number): TamperAuditResu
 
 export function handleVerifyChain(ctx: AppContext): VerifyChainResult {
   return verifyChain(ctx.db);
+}
+
+// The recovery path for everything above: empties every table, restarts
+// the audit chain at genesis, and reseeds the demo grant.
+export function handleResetDemo(ctx: AppContext): ResetDemoResult {
+  resetDemoState(ctx.db);
+  return { ok: true };
 }

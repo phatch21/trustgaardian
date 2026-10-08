@@ -55,3 +55,5 @@ export type DemoCheckoutResult = CheckoutResult | { ok: false; reason: "cart_not
 export type TamperAuditResult = { ok: true; seq: number } | { ok: false; error: string };
 
 export type VerifyChainResponse = VerifyChainResult;
+
+export type ResetDemoResult = { ok: true };

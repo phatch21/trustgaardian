@@ -21,6 +21,7 @@ import { getGrant } from "../store/index.js";
 import { createAppContext } from "./context.js";
 import {
   handleAgentMismatchCheckout,
+  handleResetDemo,
   handleTamperAudit,
   handleTamperCartCheckout,
   handleVerifyChain,
@@ -181,6 +182,11 @@ function main(): void {
 
         if (method === "POST" && pathname === "/api/demo/verify-chain") {
           sendJson(res, 200, handleVerifyChain(ctx));
+          return;
+        }
+
+        if (method === "POST" && pathname === "/api/demo/reset") {
+          sendJson(res, 200, handleResetDemo(ctx));
           return;
         }
 

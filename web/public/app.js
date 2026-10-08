@@ -17,6 +17,8 @@ const tamperSeqInput = document.getElementById("tamper-seq");
 const tamperAuditButton = document.getElementById("tamper-audit-button");
 const verifyChainButton = document.getElementById("verify-chain-button");
 const auditResultEl = document.getElementById("audit-result");
+const resetDemoButton = document.getElementById("reset-demo-button");
+const resetDemoResultEl = document.getElementById("reset-demo-result");
 
 // Holds the most recently approved cart + token so the demo controls have
 // something real to attack. Nothing here is a session or a history — just
@@ -203,6 +205,7 @@ async function loadGrant() {
 async function sendUtterance(text, scenario) {
   appendUserTurn(text);
   inputEl.value = "";
+  resetDemoResultEl.textContent = "";
 
   const result = await postJson("/api/utterance", { text, scenario });
 
@@ -320,6 +323,37 @@ verifyChainButton.addEventListener("click", async () => {
   auditResultEl.textContent = result.ok
     ? "Chain verifies intact."
     : `Broken at seq ${result.seq}: ${result.reason}`;
+});
+
+// Returns the page to its first-load state to match the server's: the
+// approved cart and token the attack controls held no longer exist.
+function clearDemoUi() {
+  for (const turn of conversationEl.querySelectorAll(".turn")) {
+    turn.remove();
+  }
+  renderDecision(null);
+  lastApproved = null;
+  tamperCartButton.disabled = true;
+  agentMismatchButton.disabled = true;
+  for (const el of [tamperCartResultEl, agentMismatchResultEl, auditResultEl]) {
+    el.textContent = "";
+  }
+  auditLogEl.innerHTML = "";
+  tamperSeqInput.value = "";
+}
+
+resetDemoButton.addEventListener("click", async () => {
+  // A stray click mid-recording would wipe the take's state.
+  if (!window.confirm("Reset demo state?\n\nClears the conversation and every cart, decision, token and audit entry, then reseeds the grant. The audit chain restarts at genesis.")) {
+    return;
+  }
+  const result = await postJson("/api/demo/reset", {});
+  if (!result.ok) {
+    resetDemoResultEl.textContent = "Reset failed.";
+    return;
+  }
+  clearDemoUi();
+  resetDemoResultEl.textContent = "Reset. Chain restarts at genesis.";
 });
 
 void loadGrant();
