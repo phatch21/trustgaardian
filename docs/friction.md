@@ -491,6 +491,56 @@ failure belongs to the model rather than the parser. Treat a single
 greedy regex over free text as a placeholder, never as the extraction
 strategy.
 
+### 2026-10-08 — Testing the UI tampered the demo database, and seed couldn't undo it
+
+**Task attempted:** Restyle /web and verify the page fits at 1080p in
+every demo state, including with all three demo-control results showing.
+
+**Steps taken:** Drove every demo control in the browser to reach the
+tallest layout, including "Tamper entry" followed by "Run verifier".
+
+**Expected:** A layout check leaves no trace, or at least one that
+`npm run seed` clears before the next recording.
+
+**Actual:** "Tamper entry" rewrote audit row seq 20 in
+data/trustgaardian.db, persistently. Every later verifier run, in the UI
+and via `npm run verify-chain`, reported `hash_mismatch` at seq 20 —
+exactly what Beat 3 shows as an attack, now present before any attack
+happens. `npm run seed` didn't help: it's idempotent by design (migrations
+are `CREATE TABLE IF NOT EXISTS`, the grant is inserted only if missing),
+so it inserts what's absent and never restores what was altered. Nothing
+in the UI or the scripts offered a reset.
+
+**Severity:** Medium. No security impact — the verifier did its job. But
+a take recorded on that database would have opened Beat 3 on an
+already-broken chain, undercutting the one beat whose point is that the
+chain was intact until the demo broke it. Easy to miss: nothing prompts a
+check before recording.
+
+**Gap:** A demo control was destructive by design, but the demo had no
+way to undo it. The only recovery was deleting the database file by hand,
+with the server stopped, which nobody would think to do mid-session.
+
+**Workaround:** Stopped the dev server, deleted data/trustgaardian.db and
+its -wal/-shm sidecars, ran `npm run seed`, and confirmed
+`npm run verify-chain` passed on the empty chain and again after a full
+demo run that skipped "Tamper entry".
+
+**Resolution (2026-10-08):** Fixed with a reset endpoint and a button.
+POST /api/demo/reset (db/reset.ts) empties every table in one transaction,
+resets audit's AUTOINCREMENT counter so the chain restarts at seq 1 from
+genesis, and reseeds the demo grant. "Reset demo state" sits in the demo
+panel next to the controls it undoes, behind a confirm dialog. Tests cover
+the empty tables, a passing verifier right after reset, and a new request
+chaining from genesis. The README documents the recovery path. No
+`npm run seed --force` was added: the button covers the recording
+workflow, and the one case it doesn't (server not running) is already
+handled by deleting the file and reseeding.
+
+**Suggestion:** Any demo control that mutates persistent state should
+ship with its reset in the same change. Run `npm run verify-chain` as a
+pre-recording check regardless.
+
 ### 2026-09-23 — request_hash left undefined in docs/spec.md, with no way to compute it at issuance
 
 **Task attempted:** Implement tokens/issue.ts's issueToken(), which
