@@ -35,12 +35,16 @@ const STATIC_FILES: Record<string, string> = {
   "/": "index.html",
   "/app.js": "app.js",
   "/styles.css": "styles.css",
+  "/vendor/open-props/open-props.min.css": "vendor/open-props/open-props.min.css",
+  "/vendor/geist/Geist-Variable.woff2": "vendor/geist/Geist-Variable.woff2",
+  "/vendor/geist/GeistMono-Variable.woff2": "vendor/geist/GeistMono-Variable.woff2",
 };
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".woff2": "font/woff2",
 };
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
